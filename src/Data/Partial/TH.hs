@@ -120,15 +120,15 @@ mkInst ty dc flds = instanceD (pure []) (conT ''Graded `appT` pure ty)
       []
   ]]
 
-mkCon :: String -> [Maybe Exp] -> [TyVarBndr] -> Type -> Name -> [(Name, Type)] -> Q [Dec]
-mkCon nm defs tvb ty dc flds = sequence
+mkCon :: String -> [Maybe Exp] -> [TyVarBndr] -> Cxt -> Type -> Name -> [(Name, Type)] -> Q [Dec]
+mkCon nm defs tvb ctx ty dc flds = sequence
   [ pragInlD (mkName nm) Inline FunLike AllPhases
   ,
     do
       btvs <- forM flds $ \_ -> newName "b"
       let
         bts = varT <$> btvs
-        ctxs = catMaybes $ zipWith3 mkCtx defs btvs flds
+        ctxs = (pure <$> ctx) <> catMaybes (zipWith3 mkCtx defs btvs flds)
         mkCtx (Just _) _ _ = Nothing
         mkCtx Nothing tv (fld, _) = Just $ conT ''Require
           `appT` mkLit dc `appT` mkLit fld `appT` varT tv
@@ -215,14 +215,14 @@ mkToPartial = mkToPartialWith ("mk" ++)
 mkFromPartial :: String -> Q Type -> Q Exp -> Q [Dec]
 mkFromPartial nm qty def = do
   ty <- qty
-  (tau, tvb) <- runWriterT $ splitTauType ty
+  (tau, (tvb, ctx)) <- runWriterT $ splitTauType ty
   tc <- splitTyCon tau
   (_, _, dc, flds) <- getRecord tc
   defs <- parseDefs dc (fst <$> flds) =<< def
-  mkCon nm defs tvb tau dc flds
+  mkCon nm defs tvb ctx tau dc flds
   where
-    splitTauType :: Type -> WriterT [TyVarBndr] Q Type
-    splitTauType (ForallT tvb _ t) = tell tvb >> splitTauType t
+    splitTauType :: Type -> WriterT ([TyVarBndr], Cxt) Q Type
+    splitTauType (ForallT tvb ctx t) = tell (tvb, ctx) >> splitTauType t
     splitTauType (ParensT t) = splitTauType t
     splitTauType t = pure t
     
