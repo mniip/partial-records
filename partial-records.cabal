@@ -83,7 +83,6 @@ library
                        , Data.Partial.TH
                        , Data.Partial.Utils
   build-depends:         base >= 4.9 && <= 4.13
-                       , tagged >= 0.8
                        , template-haskell >= 2.11
                        , transformers >= 0.5
   hs-source-dirs:      src

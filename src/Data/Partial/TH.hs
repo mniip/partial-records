@@ -30,6 +30,7 @@ module Data.Partial.TH
   ) where
 
 import Data.List
+import Data.Maybe
 import Data.Partial
 import Data.Partial.Utils
 import Data.Proxy
@@ -99,7 +100,7 @@ mkFlds mangler ty dc flds = concat <$> forM (zip [0..] flds)
     , funD (mangleFld mangler fld) [do
       var <- newName "x"
       clause [varP var] (normalB $ foldl appE (conE dc) $ fill i
-          (varE 'fillOpt `appE` varE var) (varE 'noOpt)) []
+          (conE 'Has `appE` varE var) (conE 'Hasn't)) []
       ]
     ])
   where
@@ -127,9 +128,9 @@ mkCon nm defs tvb ty dc flds = sequence
       btvs <- forM flds $ \_ -> newName "b"
       let
         bts = varT <$> btvs
-        ctxs = zipWith3 mkCtx defs btvs flds
-        mkCtx (Just _) tv _ = conT ''KnownBool `appT` varT tv
-        mkCtx Nothing tv (fld, _) = conT ''Require
+        ctxs = catMaybes $ zipWith3 mkCtx defs btvs flds
+        mkCtx (Just _) _ _ = Nothing
+        mkCtx Nothing tv (fld, _) = Just $ conT ''Require
           `appT` mkLit dc `appT` mkLit fld `appT` varT tv
       sigD (mkName nm)
         $ forallT (tvb ++ map boolTV btvs)
@@ -176,10 +177,10 @@ parseDefs _ _ _ = fail "Expected record construction"
 --     'Opt' b1 Int -> 'Opt' b2 a -> Partial (Foo a) '[b1, b2]
 -- {-\# INLINE mkfld1 #-}
 -- mkfld1 :: Int -> 'Partial' (Foo a) '[ 'True, 'False]
--- mkfld1 x = Partial_Foo ('fillOpt' x) 'noOpt'
+-- mkfld1 x = Partial_Foo ('Has' x) 'Hasn't'
 -- {-\# INLINE mkfld2 #-}
 -- mkfld2 :: a -> 'Partial' (Foo a) '[ 'False, 'True]
--- mkfld2 x = Partial_Foo 'noOpt' ('fillOpt' x)
+-- mkfld2 x = Partial_Foo 'Hasn't' ('Has' x)
 -- instance 'Graded' (Foo a) where
 --   {-\# INLINE ('?') #-}
 --   Partial_Foo x1 x2 '?' Partial_Foo y1 y1
@@ -207,7 +208,7 @@ mkToPartial = mkToPartialWith ("mk" ++)
 -- mkFoo :: forall a b1 b2.
 --   ( 'Require' \"Foo\" \"fld1\" b1
 --   -- ^ Assert that b1 ~ 'True but generate a nice error message if not
---   , 'KnownBool' b2 )
+--   )
 --   => 'Partial' (Foo (Maybe a)) '[b1, b2] -> Foo (Maybe a)
 -- mkFoo (Partial_Foo x1 x2) = Foo ('unOpt' x1) ('fromOpt' Nothing x2)
 -- @
