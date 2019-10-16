@@ -112,5 +112,11 @@ class Graded a where
   (?) :: Partial a b1 -> Partial a b2 -> Partial a (b1 <||> b2)
 
 type family (b1 :: [Bool]) <||> (b2 :: [Bool]) :: [Bool] where
-  '[] <||> '[] = '[]
+  (x0 ': x1 ': x2 ': x3 ': x4 ': x5 ': x6 ': x7 ': xs) <||> (y0 ': y1 ': y2 ': y3 ': y4 ': y5 ': y6 ': y7 ': ys) = (x0 || y0) ': (x1 || y1) ': (x2 || y2) ': (x3 || y3) ': (x4 || y4) ': (x5 || y5) ': (x6 || y6) ': (x7 || y7) ': (xs <||> ys)
+  -- This equation is semantically not necessary, but it reduces the number of
+  -- reductions this type family has to make and thus the size of the generated
+  -- coercions that the typechecker has to drag around, greatly reducing
+  -- compilation time. The length of 8 has been found to be optimal when
+  -- benchmarking on GHC 8.6.5
   (x ': xs) <||> (y ': ys) = (x || y) ': (xs <||> ys)
+  '[] <||> '[] = '[]
