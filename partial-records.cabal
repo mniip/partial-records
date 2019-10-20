@@ -1,5 +1,5 @@
 name:                partial-records
-version:             0.2.1.0
+version:             0.2.2.0
 synopsis:            Template haskell utilities for constructing records with default values
 description:         .
   If you have a datatype with a lot of default-able fields, e.g.

@@ -156,9 +156,13 @@ mkCon nm defs tvb ctx ty dc flds = sequence
 parseDefs :: Name -> [Name] -> Exp -> Q [Maybe Exp]
 parseDefs dc flds (RecConE dc' eqs)
   | dc /= dc' = fail $ "Expected record construction of " ++ show dc
-  | Just fld <- find (`notElem` flds) (fst <$> eqs)
-    = fail $ "Not a field of " ++ show dc ++ ": " ++ show fld
-  | otherwise = pure $ map (`lookup` eqs) flds
+  | otherwise = do
+    fixEqs <- traverse fixEq eqs
+    pure $ map (`lookup` fixEqs) flds
+  where
+    fixEq (nm, val) = reify nm >>= \case
+      VarI fld _ _ | fld `elem` flds -> pure (fld, val)
+      _ -> fail $ "Not a field of " ++ show dc ++ ": " ++ show nm
 parseDefs _ _ _ = fail "Expected record construction"
 
 -- | Generate an instance of the 'Partial' family and the 'Graded' class. Takes
