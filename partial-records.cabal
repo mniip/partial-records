@@ -1,5 +1,5 @@
 name:                partial-records
-version:             0.2.2.0
+version:             0.2.2.1
 synopsis:            Template haskell utilities for constructing records with default values
 description:         .
   If you have a datatype with a lot of default-able fields, e.g.
@@ -82,8 +82,9 @@ library
   exposed-modules:       Data.Partial
                        , Data.Partial.TH
                        , Data.Partial.Utils
-  build-depends:         base >= 4.10 && <= 4.13
-                       , template-haskell >= 2.12
+  build-depends:         base >= 4.9 && <= 4.13
+                       , template-haskell >= 2.11
                        , transformers >= 0.5
   hs-source-dirs:      src
   default-language:    Haskell2010
+  ghc-options:         -Wall -Wextra

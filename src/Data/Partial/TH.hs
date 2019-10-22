@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE GADTs #-}
@@ -29,14 +30,19 @@ module Data.Partial.TH
   , mkToPartialWith
   ) where
 
-import Data.List
 import Data.Maybe
+#if __GLASGOW_HASKELL__ < 804
+import Data.Monoid
+#endif
 import Data.Partial
 import Data.Partial.Utils
 import Data.Proxy
 import Control.Monad
 import Control.Monad.Trans.Writer
 import Language.Haskell.TH
+#if __GLASGOW_HASKELL__ < 802
+import Language.Haskell.TH.Lib
+#endif
 import Language.Haskell.TH.Syntax
 
 getRecord :: Name -> Q ([TyVarBndr], Type, Name, [(Name, Type)])
@@ -87,8 +93,14 @@ mkDataInst tvb ty dc flds = do
     con = forallC (tvb ++ map boolTV btvs) (pure [])
       $ gadtC [dc] (pure <$> tys) 
       $ conT ''Partial `appT` pure ty `appT` toTList (varT <$> btvs)
-  dataInstD (pure []) ''Partial [pure ty, varT =<< newName "bs"]
-    Nothing [con] []
+  dataInst ''Partial [pure ty, varT =<< newName "bs"] [con]
+  where
+    dataInst :: Name -> [Q Type] -> [Q Con] -> Q Dec
+#if __GLASGOW_HASKELL__ < 802
+    dataInst nm tys cons = dataInstD (pure []) nm tys Nothing cons (pure [])
+#else
+    dataInst nm tys cons = dataInstD (pure []) nm tys Nothing cons []
+#endif
 
 mkFlds :: (String -> String) -> Type -> Name -> [(Name, Type)] -> Q [Dec]
 mkFlds mangler ty dc flds = concat <$> forM (zip [0..] flds)
